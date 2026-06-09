@@ -4,8 +4,11 @@ All secrets come from environment variables; safe to commit.
 """
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
