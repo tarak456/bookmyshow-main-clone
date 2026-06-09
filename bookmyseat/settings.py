@@ -4,11 +4,8 @@ All secrets come from environment variables; safe to commit.
 """
 import os
 from pathlib import Path
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
+from dotenv import load_dotenv
+load_dotenv()
 import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -30,9 +27,9 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
-    'cloudinary_storage',              
+    'cloudinary_storage',              # ← ADD THIS (before staticfiles)
     'django.contrib.staticfiles',
-    'cloudinary',                      
+    'cloudinary',                      # ← ADD THIS
     'users',
     'movies',
 ]
