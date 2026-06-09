@@ -4,8 +4,8 @@ Django==3.2.19
 gunicorn==20.1.0
 Pillow>=9.0.0
 psycopg2-binary
+razorpay
 sqlparse==0.4.4
 typing_extensions==4.7.0
 whitenoise==6.6.0
 python-dotenv
-razorpay
