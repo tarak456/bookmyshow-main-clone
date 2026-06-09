@@ -135,7 +135,11 @@ class Movie(models.Model):
     SQLite will bitmap-scan the small sets efficiently.
     """
     name        = models.CharField(max_length=255)
-    image       = models.ImageField(upload_to='movies/')
+    image = models.ImageField(
+    upload_to='movies/',
+    blank=True,
+    null=True
+)
     rating      = models.DecimalField(max_digits=3, decimal_places=1)
     cast        = models.TextField()
     description = models.TextField(blank=True, null=True)
