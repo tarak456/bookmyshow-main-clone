@@ -11,8 +11,6 @@ db.sqlite3
 __pycache__/
 *.pyc
 
-# Django Static
-staticfiles/
 
 # Media Uploads
 media/
