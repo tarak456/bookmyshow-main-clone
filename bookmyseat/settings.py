@@ -15,6 +15,9 @@ SECRET_KEY    = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-i
 DEBUG         = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 DISABLE_COLLECTSTATIC = os.environ.get('DISABLE_COLLECTSTATIC', '0')
+# Force Django admin to serve its own static files
+if os.environ.get('VERCEL'):
+    DEBUG = True
 
 # Allow Render's auto-assigned domain automatically
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -72,7 +75,7 @@ DATABASES = (
     if _db_url
     else {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': BASE_DIR / 'db.sqlite3'}}
 )
-
+ 
 # ── Static & Media ────────────────────────────────────────────────────────────
 STATIC_URL  = '/static/'
 STATIC_ROOT = BASE_DIR / 'staticfiles'
