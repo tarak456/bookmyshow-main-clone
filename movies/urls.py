@@ -4,7 +4,6 @@ from . import views
 urlpatterns = [
     path('', views.movie_list, name='movie_list'),
     path('<int:movie_id>/theaters', views.theater_list, name='theater_list'),
-
     # Phase 1 — seat map
     path('theater/<int:theater_id>/seats/book/', views.book_seats, name='book_seats'),
 
@@ -27,4 +26,12 @@ urlpatterns = [
     # Task 4: Admin analytics dashboard (staff only)
     path('admin/analytics/', views.analytics_dashboard, name='analytics_dashboard'),
     path('admin/analytics/api/', views.analytics_api, name='analytics_api'),
+    
 ]
+from django.conf import settings
+from django.conf.urls.static import static
+
+# at the bottom, change urlpatterns to:
+urlpatterns = [
+    # ... your existing urls ...
+] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
