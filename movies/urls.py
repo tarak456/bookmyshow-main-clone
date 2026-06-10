@@ -28,10 +28,8 @@ urlpatterns = [
     path('admin/analytics/api/', views.analytics_api, name='analytics_api'),
     
 ]
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
+
 from django.conf import settings
 from django.conf.urls.static import static
 
-# at the bottom, change urlpatterns to:
-urlpatterns = [
-    # ... your existing urls ...
-] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
