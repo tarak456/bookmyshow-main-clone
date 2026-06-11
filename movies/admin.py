@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from .models import Genre, Language, Movie, Theater, Seat, Booking, SeatReservation, Payment
 
 
@@ -25,6 +25,24 @@ class MovieAdmin(admin.ModelAdmin):
 class TheaterAdmin(admin.ModelAdmin):
     list_display = ['name', 'movie', 'time']
     list_select_related = ['movie']
+    actions = ['generate_seats']
+
+    def generate_seats(self, request, queryset):
+        rows = ['A','B','C','D','E','F','G','H','I','J']
+        seats_per_row = 20
+        created = 0
+        for theater in queryset:
+            theater.seats.all().delete()
+            for row in rows:
+                for num in range(1, seats_per_row + 1):
+                    Seat.objects.create(
+                        theater=theater,
+                        seat_number=f"{row}{num}"
+                    )
+                    created += 1
+        self.message_user(request, f"✅ {created} seats created!", messages.SUCCESS)
+
+    generate_seats.short_description = "🎭 Auto-generate 200 seats (A1–J20)"
 
 
 @admin.register(Seat)

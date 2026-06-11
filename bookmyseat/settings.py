@@ -12,12 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ── Core ──────────────────────────────────────────────────────────────────────
 SECRET_KEY    = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-change-me-in-prod')
-DEBUG         = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
+DEBUG = True
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 DISABLE_COLLECTSTATIC = os.environ.get('DISABLE_COLLECTSTATIC', '0')
-# Force Django admin to serve its own static files
-if os.environ.get('VERCEL'):
-    DEBUG = True
+
 
 # Allow Render's auto-assigned domain automatically
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
