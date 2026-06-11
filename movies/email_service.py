@@ -83,16 +83,19 @@ def send_booking_confirmation(payment, bookings):
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _dispatch(context: dict, to_email: str, booking_ref: str):
-    """Spawn a daemon thread so the HTTP response is not blocked."""
-    thread = threading.Thread(
-        target=_send_with_retry,
-        args=(context, to_email, booking_ref),
-        daemon=True,
-        name=f'email-{booking_ref[:8]}',
-    )
-    thread.start()
-    logger.debug('Email dispatch thread started for booking_ref=%s', booking_ref)
-
+    """Send directly on Vercel (serverless kills daemon threads)."""
+    import os
+    if os.environ.get('VERCEL'):
+        _send_with_retry(context, to_email, booking_ref)
+    else:
+        thread = threading.Thread(
+            target=_send_with_retry,
+            args=(context, to_email, booking_ref),
+            daemon=True,
+            name=f'email-{booking_ref[:8]}',
+        )
+        thread.start()
+        logger.debug('Email dispatch thread started for booking_ref=%s', booking_ref)
 
 def _send_with_retry(context: dict, to_email: str, booking_ref: str):
     """Retry loop with exponential backoff. Runs in background thread."""
