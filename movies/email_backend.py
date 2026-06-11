@@ -6,7 +6,7 @@ class CustomEmailBackend(EmailBackend):
     def open(self):
         if self.connection:
             return False
-        connection_params = {'local_hostname': self.local_hostname}
+        connection_params = {}
         if self.timeout is not None:
             connection_params['timeout'] = self.timeout
         try:
