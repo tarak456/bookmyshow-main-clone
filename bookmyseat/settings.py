@@ -132,13 +132,13 @@ CACHES = {
 
 # ── Email (Task 6) ────────────────────────────────────────────────────────────
 # Dev: prints to console. Prod: set EMAIL_BACKEND=smtp + SMTP env vars.
-EMAIL_BACKEND       = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.console.EmailBackend')
+EMAIL_BACKEND       = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST          = os.environ.get('EMAIL_HOST',          'smtp.gmail.com')
 EMAIL_PORT          = int(os.environ.get('EMAIL_PORT',      '587'))
 EMAIL_USE_TLS       = os.environ.get('EMAIL_USE_TLS',       'True') == 'True'
-EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER',     '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL',  'noreply@bookmyseat.in')
+EMAIL_HOST_USER     = os.environ.get('EMAIL_HOST_USER',     'bookmyseatproject1@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'vazyxcrlfltqeqpy')
+DEFAULT_FROM_EMAIL  = os.environ.get('DEFAULT_FROM_EMAIL',  'bookmyseatproject1@gmail.com')
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 LOGGING = {
