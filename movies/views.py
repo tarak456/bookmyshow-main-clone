@@ -58,6 +58,19 @@ logger = logging.getLogger(__name__)
 def _seat_price_paise():
     from django.conf import settings
     return getattr(settings, 'PRICE_PER_SEAT_PAISE', 15000)
+def _seat_price_by_number(seat_number):
+    row = seat_number[0].upper()
+
+    if row == 'A':
+        return 10000  # ₹100
+    elif row == 'B':
+        return 12000  # ₹120
+    elif row == 'C':
+        return 15000  # ₹150
+    elif row == 'D':
+        return 18000  # ₹180
+    else:
+        return 20000  # ₹200
 
 
 def _annotate_seats(seats, theater, user):
@@ -356,7 +369,10 @@ def confirm_booking(request, theater_id):
 
     earliest         = active.order_by('expires_at').first()
     seconds_remaining = max(0, int((earliest.expires_at - now).total_seconds()))
-    original_amount_paise = active.count() * _seat_price_paise()
+    original_amount_paise = sum(
+    _seat_price_by_number(r.seat.seat_number)
+    for r in active.select_related('seat')
+)
 
     # FIRSTSHOW offer
     has_previous_booking = Booking.objects.filter(user=request.user).exists()
@@ -412,8 +428,10 @@ def create_payment(request, theater_id):
     if not reservations.exists():
         return JsonResponse({'error': 'Reservation expired. Please select seats again.'}, status=400)
 
-    seat_ids     = list(reservations.values_list('seat_id', flat=True))
-    amount_paise = len(seat_ids) * _seat_price_paise()
+    amount_paise = sum(
+    _seat_price_by_number(r.seat.seat_number)
+    for r in reservations.select_related('seat')
+)
 
     # First booking offer
     has_previous_booking = Booking.objects.filter(
