@@ -427,6 +427,9 @@ def create_payment(request, theater_id):
     )
     if not reservations.exists():
         return JsonResponse({'error': 'Reservation expired. Please select seats again.'}, status=400)
+    seat_ids = list(
+    reservations.values_list('seat_id', flat=True)
+)
 
     amount_paise = sum(
     _seat_price_by_number(r.seat.seat_number)
