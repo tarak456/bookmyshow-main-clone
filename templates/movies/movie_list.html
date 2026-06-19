@@ -59,8 +59,15 @@
     text-decoration:none; color:inherit;
   }
   .movie-card:hover { transform:translateY(-6px); box-shadow:0 12px 32px rgba(0,0,0,.14); color:inherit; }
-  .movie-poster { position:relative; aspect-ratio:2/3; overflow:hidden; }
-  .movie-poster img { width:100%; height:100%; object-fit:cover; transition:transform .4s; }
+  .movie-poster { position:relative; height:320px; overflow:hidden; }
+
+@media (max-width: 768px) {
+  .movie-poster { height:240px; }
+}
+@media (max-width: 480px) {
+  .movie-poster { height:200px; }
+}
+  .movie-poster img { width:100%; height:100%; object-fit:cover; object-position:top center; transition:transform .4s; }
   .movie-card:hover .movie-poster img { transform:scale(1.05); }
   .poster-overlay {
     position:absolute; inset:0;
