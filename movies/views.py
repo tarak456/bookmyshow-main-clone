@@ -42,7 +42,7 @@ from bookmyseat import settings
 from . import analytics as _analytics
 from .email_service import send_booking_confirmation
 from .models import (
-    Booking, Genre, Language, Movie, Payment,
+    Booking, Genre, Language, Movie, MovieTrailer, Payment,
     Seat, SeatReservation, Theater,
     RESERVATION_TIMEOUT_MINUTES,
 )
@@ -73,16 +73,14 @@ def _seat_price_by_number(seat_number):
         return 20000  # ₹200
 
 
-PREMIUM_ROWS  = set('ABC')
-ECONOMY_ROWS  = set('HIJ')
-
 def _annotate_seats(seats, theater, user):
     """
-    Attach .reserved_by_other, .reserved_by_me, and .zone to each Seat.
+    Attach .reserved_by_other and .reserved_by_me to each Seat object.
 
-    Zone is derived from the seat's row letter:
-      A-C → 'premium', D-G → 'standard', H-J → 'economy'
-    This is used by the seat map template to tint seat sections.
+    Why this helper?
+    A bug was found where the reserve_seats error path rendered the seat
+    map without annotations, making reserved seats appear green.  Now
+    every render path calls this helper — no way to forget it.
     """
     now = timezone.now()
     reserved_by_others = set(
@@ -99,42 +97,17 @@ def _annotate_seats(seats, theater, user):
     for seat in seats:
         seat.reserved_by_other = seat.id in reserved_by_others
         seat.reserved_by_me    = seat.id in reserved_by_me
-        row_letter = seat.seat_number[0].upper() if seat.seat_number else 'D'
-        if row_letter in PREMIUM_ROWS:
-            seat.zone = 'premium'
-        elif row_letter in ECONOMY_ROWS:
-            seat.zone = 'economy'
-        else:
-            seat.zone = 'standard'
     return seats
-
-
-def _group_seats_by_row(seats):
-    """
-    Convert flat list of seats into list of (row_letter, [seats]) tuples,
-    sorted by row letter then seat number.  Used by template to render
-    one .seat-row div per row with a row-label on the left.
-    """
-    from itertools import groupby
-    sorted_seats = sorted(seats, key=lambda s: (s.seat_number[0], int(s.seat_number[1:])))
-    rows = []
-    for letter, group in groupby(sorted_seats, key=lambda s: s.seat_number[0]):
-        rows.append((letter, list(group)))
-    return rows
 
 
 def _seat_map_response(request, theater, error=None):
     """Single render path for the seat map — always fully annotated."""
     seats = _annotate_seats(
-        list(Seat.objects.filter(theater=theater).order_by('seat_number')),
+        list(Seat.objects.filter(theater=theater)),
         theater, request.user,
     )
-    seat_rows = _group_seats_by_row(seats)
     return render(request, 'movies/seat_selection.html', {
-        'theaters':  theater,
-        'seats':     seats,
-        'seat_rows': seat_rows,
-        'error':     error,
+        'theaters': theater, 'seats': seats, 'error': error,
     })
 
 
@@ -266,46 +239,44 @@ def movie_list(request):
 
 def theater_list(request, movie_id):
     """
-    Show-time selection page.
+    Task 5/2 fix — language is now a real filter, not decoration.
 
-    Language is now a REAL filter (Task: language-aware booking).
-    Each Theater row belongs to exactly one language. Until the user
-    picks a language, we don't show "Book"/seat links — only the
-    language picker — so nobody can land on a seat map without a
-    language context (Task 1: block seat selection pre-language).
-
-    available_languages is derived from theaters that ACTUALLY exist
-    for this movie (not Movie.languages, which is just the catalogue's
-    claimed list and may not match real shows).
+    Behaviour
+    ---------
+    - No ?language= in the URL  → show a language-picker screen only.
+      We deliberately do NOT show theaters yet, because a movie may run
+      in several languages and showing all of them mixed together is
+      exactly how users ended up confusing a Telugu show's seat map
+      with an English show's seat map.
+    - ?language=<code> present  → show ONLY theaters whose `language`
+      field matches that Language. Each of those theaters has its own
+      independent Seat rows, so seat numbers never collide across
+      languages even if two screenings reuse the same seat_number text.
     """
     movie = get_object_or_404(
         Movie.objects.prefetch_related('genres', 'languages'),
         id=movie_id
     )
 
-    selected_language_id = request.GET.get('language')
+    # Languages this movie actually has a screening in (not just catalogue
+    # languages) — avoids offering a language tab with zero shows behind it.
+    available_languages = Language.objects.filter(
+        theaters__movie=movie
+    ).distinct().order_by('name')
 
-    all_theaters_for_movie = (
-        Theater.objects.filter(movie=movie)
-        .select_related('movie', 'language')
-    )
-
-    # Distinct languages that actually have a show for this movie.
-    available_languages = sorted(
-        {t.language for t in all_theaters_for_movie if t.language is not None},
-        key=lambda l: l.name,
-    )
-
+    selected_code = request.GET.get('language', '').strip()
     selected_language = None
     theaters = Theater.objects.none()
 
-    if selected_language_id:
-        selected_language = next(
-            (l for l in available_languages if str(l.id) == str(selected_language_id)),
-            None,
-        )
+    if selected_code:
+        selected_language = available_languages.filter(code=selected_code).first()
         if selected_language:
-            theaters = all_theaters_for_movie.filter(language=selected_language)
+            theaters = (
+                Theater.objects
+                .filter(movie=movie, language=selected_language)
+                .select_related('movie', 'language')
+                .order_by('time')
+            )
 
     return render(
         request,
@@ -315,6 +286,8 @@ def theater_list(request, movie_id):
             'theaters': theaters,
             'available_languages': available_languages,
             'selected_language': selected_language,
+            'language_required': selected_language is None,
+            'trailer_url': movie.get_trailer_for_language(selected_language),
         }
     )
 
@@ -325,7 +298,9 @@ def theater_list(request, movie_id):
 
 @login_required(login_url='/login/')
 def book_seats(request, theater_id):
-    theater = get_object_or_404(Theater, id=theater_id)
+    theater = get_object_or_404(Theater.objects.select_related('movie', 'language'), id=theater_id)
+    if not Seat.objects.filter(theater=theater).exists():
+        return redirect('theater_list', movie_id=theater.movie_id)
     return _seat_map_response(request, theater)
 
 

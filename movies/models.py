@@ -120,6 +120,41 @@ class Language(models.Model):
 # Core catalogue
 # ─────────────────────────────────────────────────────────────────────────────
 
+class MovieTrailer(models.Model):
+    """
+    Language-specific trailer for a movie.
+
+    Why separate model instead of a field on Movie?
+    ------------------------------------------------
+    A movie can have trailers in multiple languages (Telugu dubbed trailer,
+    English original trailer, Hindi promo, etc.). A single URLField on Movie
+    can only hold one URL. This model lets each (movie, language) pair have
+    its own trailer URL, validated by the same YouTube validator.
+
+    Fallback chain in templates:
+      1. MovieTrailer for this movie + this show's language  ← preferred
+      2. Movie.trailer_url                                   ← generic fallback
+      3. "Trailer not available" placeholder                 ← final fallback
+    """
+    movie    = models.ForeignKey(
+        'Movie', on_delete=models.CASCADE, related_name='trailers'
+    )
+    language = models.ForeignKey(
+        Language, on_delete=models.CASCADE, related_name='trailers'
+    )
+    url      = models.URLField(
+        validators=[validate_youtube_url],
+        help_text='YouTube trailer URL for this specific language version.',
+    )
+
+    class Meta:
+        unique_together = [('movie', 'language')]
+        verbose_name = 'Movie Trailer'
+
+    def __str__(self):
+        return f'{self.movie.name} — {self.language.name} trailer'
+
+
 class Movie(models.Model):
     """
     Film record.
@@ -166,6 +201,18 @@ class Movie(models.Model):
     def youtube_embed_id(self):
         return extract_youtube_id(self.trailer_url)
 
+    def get_trailer_for_language(self, language):
+        """
+        Return the best trailer URL for the given Language object.
+        Falls back to Movie.trailer_url if no language-specific one exists.
+        """
+        if language:
+            try:
+                return self.trailers.get(language=language).url
+            except MovieTrailer.DoesNotExist:
+                pass
+        return self.trailer_url
+
 
 class Theater(models.Model):
     """
@@ -174,26 +221,27 @@ class Theater(models.Model):
     Design note: in a full production system this would be split into
     Venue + Screen + Show, but for this internship scope we keep it flat.
 
-    Language (added)
-    -----------------
-    Each Theater row is ONE specific language's show. A Telugu 6pm show
-    and an English 6pm show of the same movie/venue are two separate
-    Theater rows, each with their own independent set of Seat rows.
-    This is what makes seat availability language-specific: booking A1
-    in the Telugu show does NOT touch A1 in the English show, because
-    they are different Seat rows tied to different Theater rows.
+    Why `language` lives here (not on Movie)
+    -----------------------------------------
+    Movie.languages is the set of languages a film is AVAILABLE in
+    (used for catalogue filtering on the movie list page — Task 5).
+    Theater.language is which ONE of those languages THIS SPECIFIC
+    screening is showing. The same movie can have multiple Theater
+    rows at different times/venues, each in a different language —
+    e.g. 6 PM Telugu show and 9 PM English show of the same film.
 
-    `language` is nullable so this migration never breaks existing rows
-    created before this field existed. New/old theaters without a
-    language still display fine ("Language not set" badge in admin/UI).
+    Each Theater owns its own independent Seat rows (via the seats
+    related_name FK below), so seat "A1" in the Telugu show and seat
+    "A1" in the English show are two distinct database rows. Booking
+    one can never mark the other as booked.
     """
     name     = models.CharField(max_length=255)
     movie    = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='theaters')
     time     = models.DateTimeField()
     language = models.ForeignKey(
-        Language, on_delete=models.SET_NULL,
-        null=True, blank=True, related_name='theaters',
-        help_text='Language of THIS specific show. Each language gets its own seats.',
+        Language, on_delete=models.PROTECT, related_name='theaters',
+        null=True, blank=True,
+        help_text='The language this specific screening is shown in.',
     )
 
     class Meta:
@@ -203,7 +251,7 @@ class Theater(models.Model):
         ]
 
     def __str__(self):
-        lang = f' [{self.language.name}]' if self.language else ''
+        lang = f' [{self.language.name}]' if self.language_id else ''
         return f'{self.name} — {self.movie.name}{lang} at {self.time}'
 
 

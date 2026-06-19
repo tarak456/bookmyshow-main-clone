@@ -74,3 +74,34 @@ def youtube_embed(movie):
         )
 
     return _FALLBACK_HTML
+
+
+@register.filter(is_safe=True)
+def youtube_embed_url(url, movie_name=''):
+    """
+    Usage in templates:
+        {{ trailer_url|youtube_embed_url:movie.name }}
+
+    Same as youtube_embed but takes a raw URL string instead of a movie object.
+    Used when we have a language-specific trailer URL from the view context.
+    """
+    from .models import extract_youtube_id
+    video_id = _safe_youtube_id(extract_youtube_id(url)) if url else None
+
+    if video_id:
+        return format_html(
+            '<iframe'
+            ' src="https://www.youtube-nocookie.com/embed/{vid}"'
+            ' title="{title} \u2014 Official Trailer"'
+            ' loading="lazy"'
+            ' referrerpolicy="no-referrer-when-downgrade"'
+            ' sandbox="allow-scripts allow-same-origin allow-presentation"'
+            ' allow="picture-in-picture; fullscreen"'
+            ' allowfullscreen'
+            ' style="border:0;position:absolute;top:0;left:0;width:100%;height:100%;"'
+            '></iframe>',
+            vid=video_id,
+            title=conditional_escape(movie_name),
+        )
+
+    return _FALLBACK_HTML
