@@ -85,7 +85,7 @@ def youtube_embed_url(url, movie_name=''):
     Same as youtube_embed but takes a raw URL string instead of a movie object.
     Used when we have a language-specific trailer URL from the view context.
     """
-    from .models import extract_youtube_id
+    from movies.models import extract_youtube_id
     video_id = _safe_youtube_id(extract_youtube_id(url)) if url else None
 
     if video_id:
