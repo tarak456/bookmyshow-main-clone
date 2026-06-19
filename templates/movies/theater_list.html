@@ -114,7 +114,11 @@
 
 {% block content %}
 <!-- Movie hero -->
-<div class="movie-hero">
+<div class="movie-hero" style="
+  background: linear-gradient(135deg, rgba(26,26,46,0.85), rgba(22,33,62,0.92)),
+              url('{{ movie.image.url }}') center/cover no-repeat;
+  padding: 36px 0 32px;
+">
   <div class="container">
     <nav aria-label="breadcrumb" style="margin-bottom:16px;">
       <ol class="breadcrumb" style="background:transparent;padding:0;margin:0;">
