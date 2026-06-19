@@ -74,6 +74,12 @@
           <span class="lbl">Show Time</span>
           <span class="val">{{ show_time }}</span>
         </div>
+        {% if language_name %}
+        <div class="ticket-row">
+          <span class="lbl">Language</span>
+          <span class="val">{{ language_name }}</span>
+        </div>
+        {% endif %}
         <div class="ticket-row">
           <span class="lbl">Seats</span>
           <span class="val">

@@ -169,20 +169,42 @@ class Movie(models.Model):
 
 class Theater(models.Model):
     """
-    A screening — one movie, one venue, one show-time.
+    A screening — one movie, one venue, one show-time, one language.
 
     Design note: in a full production system this would be split into
     Venue + Screen + Show, but for this internship scope we keep it flat.
+
+    Language (added)
+    -----------------
+    Each Theater row is ONE specific language's show. A Telugu 6pm show
+    and an English 6pm show of the same movie/venue are two separate
+    Theater rows, each with their own independent set of Seat rows.
+    This is what makes seat availability language-specific: booking A1
+    in the Telugu show does NOT touch A1 in the English show, because
+    they are different Seat rows tied to different Theater rows.
+
+    `language` is nullable so this migration never breaks existing rows
+    created before this field existed. New/old theaters without a
+    language still display fine ("Language not set" badge in admin/UI).
     """
-    name  = models.CharField(max_length=255)
-    movie = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='theaters')
-    time  = models.DateTimeField()
+    name     = models.CharField(max_length=255)
+    movie    = models.ForeignKey(Movie, on_delete=models.CASCADE, related_name='theaters')
+    time     = models.DateTimeField()
+    language = models.ForeignKey(
+        Language, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name='theaters',
+        help_text='Language of THIS specific show. Each language gets its own seats.',
+    )
 
     class Meta:
-        indexes = [models.Index(fields=['movie'], name='theater_movie_idx')]
+        indexes = [
+            models.Index(fields=['movie'], name='theater_movie_idx'),
+            models.Index(fields=['movie', 'language'], name='theater_movie_lang_idx'),
+        ]
 
     def __str__(self):
-        return f'{self.name} — {self.movie.name} at {self.time}'
+        lang = f' [{self.language.name}]' if self.language else ''
+        return f'{self.name} — {self.movie.name}{lang} at {self.time}'
 
 
 class Seat(models.Model):

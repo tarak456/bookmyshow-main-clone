@@ -227,7 +227,7 @@ def get_theater_occupancy(force_refresh=False):
                 output_field=FloatField(),
             )
         )
-        .select_related('movie')
+        .select_related('movie', 'language')
         .order_by('-occupancy_pct')
     )
 
@@ -236,6 +236,7 @@ def get_theater_occupancy(force_refresh=False):
             'theater_id':    t.id,
             'theater_name':  t.name,
             'movie_name':    t.movie.name,
+            'language':      t.language.name.title() if t.language else None,
             'total_seats':   t.total_seats,
             'booked_seats':  t.booked_seats,
             'occupancy_pct': round(t.occupancy_pct, 1),

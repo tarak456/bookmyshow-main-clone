@@ -68,6 +68,7 @@ def send_booking_confirmation(payment, bookings):
         'movie_name':  payment.theater.movie.name,
         'theater_name': payment.theater.name,
         'show_time':   payment.theater.time,
+        'language_name': payment.theater.language.name.title() if payment.theater.language else None,
         'booking_ref': str(payment.booking_ref),
         'amount_inr':  payment.amount_inr,
         'seats':       [b.seat.seat_number for b in bookings],
@@ -148,12 +149,14 @@ def _plain_text(ctx: dict) -> str:
     Also useful if the template file is missing (belt-and-suspenders).
     """
     seats = ', '.join(ctx['seats']) if ctx['seats'] else '—'
+    language_line = f"Language  : {ctx['language_name']}\n" if ctx.get('language_name') else ''
     return (
         f"Hi {ctx['user'].username},\n\n"
         f"Your booking is CONFIRMED!\n\n"
         f"Movie     : {ctx['movie_name']}\n"
         f"Theater   : {ctx['theater_name']}\n"
         f"Show time : {ctx['show_time']}\n"
+        f"{language_line}"
         f"Seats     : {seats}\n"
         f"Amount    : ₹{ctx['amount_inr']}\n"
         f"Payment ID: {ctx['payment_id']}\n"

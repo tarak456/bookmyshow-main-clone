@@ -70,6 +70,9 @@
             <tr><td class="text-muted">Movie</td><td class="fw-semibold">{{ theater.movie.name }}</td></tr>
             <tr><td class="text-muted">Theater</td><td>{{ theater.name }}</td></tr>
             <tr><td class="text-muted">Show time</td><td>{{ theater.time }}</td></tr>
+            {% if theater.language %}
+            <tr><td class="text-muted">Language</td><td>{{ theater.language.name|title }}</td></tr>
+            {% endif %}
             <tr>
               <td class="text-muted">Seats</td>
               <td>{% for res in reservations %}<span class="seat-chip">{{ res.seat.seat_number }}</span>{% endfor %}</td>

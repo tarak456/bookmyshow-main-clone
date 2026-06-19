@@ -23,8 +23,9 @@ class MovieAdmin(admin.ModelAdmin):
 
 @admin.register(Theater)
 class TheaterAdmin(admin.ModelAdmin):
-    list_display = ['name', 'movie', 'time']
-    list_select_related = ['movie']
+    list_display = ['name', 'movie', 'language', 'time']
+    list_filter = ['language', 'movie']
+    list_select_related = ['movie', 'language']
     actions = ['generate_seats']
 
     def generate_seats(self, request, queryset):

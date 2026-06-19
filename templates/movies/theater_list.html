@@ -65,6 +65,18 @@
     padding: 10px 16px; font-size: .82rem; color: #856404;
     display: flex; align-items: center; gap: 8px;
   }
+  .lang-pill {
+    display: inline-block; text-decoration: none;
+    border: 1.5px solid #e0e0e0; border-radius: 50px;
+    padding: 7px 18px; font-size: .85rem; font-weight: 600;
+    color: #1a1a2e; background: #fff; transition: all .15s;
+  }
+  .lang-pill:hover {
+    border-color: var(--bms-red); color: var(--bms-red);
+  }
+  .lang-pill.active {
+    background: var(--bms-red); border-color: var(--bms-red); color: #fff;
+  }
 </style>
 {% endblock %}
 
@@ -85,11 +97,7 @@
           <span class="genre-pill"><i class="fas fa-star me-1" style="color:#f5a623;"></i>{{ movie.rating }}/10</span>
           <div class="mt-2">
 {% for language in movie.languages.all %}
-    <a href="?language={{ language.name }}"
-       class="genre-pill"
-       style="text-decoration:none;">
-       {{ language.name }}
-    </a>
+    <span class="genre-pill" style="opacity:.7;">{{ language.name }}</span>
 {% endfor %}
 </div>
           <span class="genre-pill">Action</span>
@@ -134,15 +142,51 @@
     <i class="fas fa-map-marker-alt me-2" style="color:var(--bms-red);"></i>
 
     {% if selected_language %}
-        {{ selected_language|title }} Shows
+        {{ selected_language.name|title }} Shows
     {% else %}
-        Available Theaters
+        Select a Language to Continue
     {% endif %}
 </h5>
+        {% if selected_language %}
         <span style="font-size:.82rem;color:#888;">{{ theaters|length }} theater{{ theaters|length|pluralize }}</span>
+        {% endif %}
       </div>
 
-      {% if theaters %}
+      <!-- Language picker — REQUIRED before any show times are shown.
+           This is the gate for Task 1: user cannot reach seat selection
+           without first choosing a language, because theaters/seats below
+           only render once selected_language is set. -->
+      {% if available_languages %}
+      <div style="background:#fff;border-radius:14px;padding:16px 20px;box-shadow:0 4px 20px rgba(0,0,0,.08);margin-bottom:16px;">
+        <div style="font-size:.82rem;font-weight:700;color:#1a1a2e;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em;">
+          <i class="fas fa-language me-2" style="color:var(--bms-red);"></i>Choose Language
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for lang in available_languages %}
+          <a href="?language={{ lang.id }}"
+             class="lang-pill{% if selected_language and selected_language.id == lang.id %} active{% endif %}">
+            {{ lang.name|title }}
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      {% if not selected_language %}
+        <div style="background:#fff;border-radius:14px;padding:48px 24px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.06);">
+          <i class="fas fa-language fa-3x text-muted mb-3 d-block"></i>
+          {% if available_languages %}
+            <h5 style="color:#888;font-weight:600;">Pick a language above to see show timings</h5>
+            <p style="color:#bbb;font-size:.88rem;">Seats are specific to each language's show.</p>
+          {% else %}
+            <h5 style="color:#888;font-weight:600;">No Shows Available</h5>
+            <p style="color:#bbb;font-size:.88rem;">No theaters are currently showing this movie in any language.</p>
+            <a href="/movies" class="btn btn-bms mt-2" style="border-radius:8px;padding:10px 24px;">
+              Browse Other Movies
+            </a>
+          {% endif %}
+        </div>
+      {% elif theaters %}
         {% for theater in theaters %}
         <div class="theater-card">
           <div class="theater-head">
@@ -168,14 +212,14 @@
         <div style="background:#fff;border-radius:14px;padding:48px 24px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.06);">
           <i class="fas fa-calendar-times fa-3x text-muted mb-3 d-block"></i>
           <h5 style="color:#888;font-weight:600;">No Shows Available</h5>
-          <p style="color:#bbb;font-size:.88rem;">No theaters are currently showing this movie.</p>
+          <p style="color:#bbb;font-size:.88rem;">No theaters are currently showing this movie in {{ selected_language.name }}.</p>
           <a href="/movies" class="btn btn-bms mt-2" style="border-radius:8px;padding:10px 24px;">
             Browse Other Movies
           </a>
         </div>
       {% endif %}
 
-      {% if theaters %}
+      {% if selected_language and theaters %}
       <div class="non-cancel-notice mt-3">
         <i class="fas fa-info-circle"></i>
         <span>Tickets are <strong>non-cancellable</strong> after booking confirmation.</span>

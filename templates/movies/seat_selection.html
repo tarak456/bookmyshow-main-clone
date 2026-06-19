@@ -1,212 +1,308 @@
 {% extends "users/basic.html" %}
-{% block content %}
+{% block title %}Select Seats — {{ theaters.movie.name }} | BookMySeat{% endblock %}
 
+{% block extra_head %}
 <style>
-  body { font-family: Arial, sans-serif; }
+  :root {
+    --seat-size:      42px;
+    --seat-gap:       4px;
+    --seat-radius:    8px 8px 3px 3px;
+    --row-label-w:    28px;
+    --s-avail-bg:     #e8f5e9;
+    --s-avail-bd:     #43a047;
+    --s-selected-bg:  #1565c0;
+    --s-sold-bg:      #e0e0e0;
+    --s-sold-bd:      #bdbdbd;
+    --s-held-bg:      #fff8e1;
+    --s-held-bd:      #ffc107;
+    --s-mine-bg:      #e3f2fd;
+    --s-mine-bd:      #1565c0;
+    --premium-bg:     #fce4ec;
+    --premium-bd:     #e91e63;
+    --standard-bg:    #e8f5e9;
+    --standard-bd:    #43a047;
+    --economy-bg:     #e3f2fd;
+    --economy-bd:     #1976d2;
+  }
 
-  /* ── Seat states ───────────────────────────────────────────── */
-  .seat {
-    width: 36px; height: 36px;
-    border: 2px solid #28a745;
-    margin: 4px;
-    text-align: center; line-height: 32px;
-    cursor: pointer;
-    border-radius: 6px;
-    font-size: 11px; font-weight: 600;
-    transition: background-color 0.2s, color 0.2s, transform 0.1s;
+  .seat-page { padding-bottom: 90px; }
+
+  /* ── Info hero ──────────────────────────────────────── */
+  .info-card {
+    background: linear-gradient(135deg,#1a1a2e 0%,#16213e 100%);
+    border-radius: 16px; padding: 20px 24px; margin-bottom: 24px;
+    color: #fff; position: relative; overflow: hidden;
+  }
+  .info-card::after {
+    content: "🎬"; position: absolute; right: 20px; top: 50%;
+    transform: translateY(-50%); font-size: 4.5rem; opacity: .05;
+    pointer-events: none;
+  }
+  .movie-title {
+    font-family: 'Poppins',sans-serif; font-size: 1.2rem;
+    font-weight: 700; margin: 0 0 8px; line-height: 1.3;
+  }
+  .lang-badge {
+    display: inline-block; background: var(--bms-red); color: #fff;
+    border-radius: 20px; padding: 2px 10px; font-size: .7rem;
+    font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+    vertical-align: middle; margin-left: 6px;
+  }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 14px; font-size: .82rem; color: rgba(255,255,255,.65); }
+  .meta-item { display: flex; align-items: center; gap: 5px; }
+  .meta-item i { color: var(--bms-red); font-size: .85rem; }
+
+  /* ── Screen ─────────────────────────────────────────── */
+  .screen-wrap { text-align: center; margin: 0 auto 24px; max-width: 500px; }
+  .screen-bar {
+    height: 10px;
+    background: linear-gradient(to bottom,#fff 0%,#c0c0c0 100%);
+    border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+    box-shadow: 0 0 22px 5px rgba(255,255,255,.3);
+    margin-bottom: 5px;
+  }
+  .screen-label { font-size: .7rem; letter-spacing: .15em; color: #aaa; text-transform: uppercase; }
+
+  /* ── Zone legend ─────────────────────────────────────── */
+  .zone-legend {
+    display: flex; justify-content: center; flex-wrap: wrap; gap: 14px;
+    margin-bottom: 20px;
+  }
+  .zone-chip { display: flex; align-items: center; gap: 6px; font-size: .76rem; font-weight: 600; color: #555; }
+  .zone-dot  { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; }
+
+  /* ── Seat grid ───────────────────────────────────────── */
+  .seat-theater { overflow-x: auto; padding: 0 4px 8px; }
+  .seat-row     { display: flex; align-items: center; gap: var(--seat-gap); margin-bottom: var(--seat-gap); }
+  .row-label    {
+    width: var(--row-label-w); flex-shrink: 0; text-align: center;
+    font-family: 'Poppins',sans-serif; font-size: .68rem; font-weight: 700; color: #999;
     user-select: none;
   }
-  .seat:hover { background-color: #28a745; color: white; transform: scale(1.1); }
 
-  /* Selected by current user */
-  .seat.selected { background-color: #0d6efd; border-color: #0d6efd; color: white; }
-  .seat.selected:hover { background-color: #0b5ed7; }
-
-  /* Permanently booked */
-  .seat.sold { background-color: #ccc; border-color: #aaa; color: #666; cursor: not-allowed; }
-  .seat.sold:hover { transform: none; background-color: #ccc; color: #666; }
-
-  /* Temporarily reserved by another user */
-  .seat.reserved-other {
-    background-color: #fff3cd; border-color: #ffc107;
-    color: #856404; cursor: not-allowed;
+  /* ── Seat ────────────────────────────────────────────── */
+  .seat {
+    width: var(--seat-size); height: var(--seat-size);
+    border-radius: var(--seat-radius);
+    border: 1.5px solid var(--s-avail-bd); background: var(--s-avail-bg);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Poppins',sans-serif; font-size: 10px; font-weight: 700;
+    cursor: pointer; user-select: none; flex-shrink: 0;
+    transition: transform .12s, box-shadow .12s;
+    box-shadow: inset 0 3px 0 rgba(0,0,0,.07);
+    -webkit-tap-highlight-color: transparent;
   }
-  .seat.reserved-other:hover { transform: none; background-color: #fff3cd; color: #856404; }
+  .seat label { cursor: pointer; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
+  .seat:hover         { transform: translateY(-3px) scale(1.08); box-shadow: 0 6px 14px rgba(67,160,71,.3),inset 0 3px 0 rgba(0,0,0,.07); z-index: 1; }
+  .seat.premium       { background: var(--premium-bg) !important;  border-color: var(--premium-bd) !important; }
+  .seat.premium:hover { box-shadow: 0 6px 14px rgba(233,30,99,.25),inset 0 3px 0 rgba(0,0,0,.07); }
+  .seat.economy       { background: var(--economy-bg) !important;  border-color: var(--economy-bd) !important; }
+  .seat.economy:hover { box-shadow: 0 6px 14px rgba(25,118,210,.25),inset 0 3px 0 rgba(0,0,0,.07); }
+  .seat.selected      { background: var(--s-selected-bg) !important; border-color: var(--s-selected-bg) !important; color: #fff !important; transform: translateY(-2px); box-shadow: 0 4px 14px rgba(21,101,192,.5) !important; }
+  .seat.sold          { background: var(--s-sold-bg) !important; border-color: var(--s-sold-bd) !important; color: #aaa !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; font-size: 13px; }
+  .seat.reserved-other{ background: var(--s-held-bg) !important; border-color: var(--s-held-bd) !important; color: #856404 !important; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+  .seat.reserved-me   { background: var(--s-mine-bg) !important; border-color: var(--s-mine-bd) !important; color: var(--s-mine-bd) !important; }
+  @media (prefers-reduced-motion: reduce) { .seat { transition: none; } }
 
-  /* Reserved by me (already in basket) */
-  .seat.reserved-me { background-color: #cff4fc; border-color: #0dcaf0; color: #055160; }
+  /* ── State legend ────────────────────────────────────── */
+  .seat-legend {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 14px;
+    background: #f7f7f7; border-radius: 12px; padding: 14px 16px; margin-top: 20px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: .77rem; color: #555; }
+  .legend-swatch { width: 20px; height: 20px; border-radius: 4px 4px 2px 2px; border: 1.5px solid; flex-shrink: 0; }
 
-  .screen {
-    margin: 20px 0; background-color: #ccc;
-    height: 50px; text-align: center; line-height: 50px; color: #666;
-    border-radius: 4px; letter-spacing: 2px; font-size: 13px;
+  /* ── Error ───────────────────────────────────────────── */
+  .seat-error {
+    background: #fff3f3; border: 1px solid #f5c6c6; border-radius: 10px;
+    padding: 12px 16px; display: flex; gap: 10px; align-items: flex-start;
+    margin-bottom: 20px; font-size: .85rem; color: #c0392b;
+  }
+
+  /* ── Sticky summary bar ──────────────────────────────── */
+  .summary-bar {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+    background: #fff; border-top: 1px solid #e8e8e8;
+    box-shadow: 0 -4px 20px rgba(0,0,0,.1);
+    padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .summary-text { font-family: 'Poppins',sans-serif; font-size: .88rem; font-weight: 600; color: #1a1a2e; line-height: 1.3; }
+  .summary-sub  { font-size: .74rem; font-weight: 400; color: #888; }
+  .btn-hold {
+    background: var(--bms-red); color: #fff; border: none; border-radius: 10px;
+    padding: 11px 22px; font-family: 'Poppins',sans-serif; font-size: .88rem;
+    font-weight: 700; cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    transition: background .15s, transform .1s;
+  }
+  .btn-hold:disabled { background: #ccc; cursor: not-allowed; transform: none; }
+  .btn-hold:not(:disabled):hover { background: #c0181d; transform: translateY(-1px); }
+
+  /* ── Mobile ──────────────────────────────────────────── */
+  @media (max-width: 480px) {
+    :root { --seat-size: 36px; --seat-gap: 3px; --row-label-w: 22px; }
+    .info-card { padding: 16px; }
+    .movie-title { font-size: 1rem; }
+    .seat { font-size: 9px; }
+    .summary-bar { padding: 10px 14px; }
   }
 </style>
+{% endblock %}
 
-<div class="container mt-5">
-  <div class="row">
-    <div class="col-lg-9 mx-auto">
+{% block content %}
+<div class="container seat-page" style="max-width:700px;margin-top:24px;">
 
-      <!-- Movie / Theater info card -->
-      <div class="card mb-4 shadow-sm">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-center flex-wrap">
-            <div>
-              <h4 class="card-title mb-1">{{ theaters.movie.name }}</h4>
-              <p class="card-text text-muted mb-0">
-                <i class="fas fa-map-marker-alt me-1"></i>{{ theaters.name }}
-                &nbsp;|&nbsp;
-                <i class="fas fa-clock me-1"></i>{{ theaters.time }}
-              </p>
-            </div>
-            <div class="mt-2 mt-sm-0">
-              <span class="badge bg-secondary me-1">2D</span>
-              <span class="badge bg-secondary me-1">3D</span>
-              <span class="badge bg-secondary me-1">IMAX 3D</span>
-              <span class="badge bg-primary">{{ seats|length }} seats</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Error message -->
-      {% if error %}
-      <div class="alert alert-danger d-flex align-items-center mb-4" role="alert">
-        <i class="fas fa-exclamation-circle me-2"></i>
-        <span>{{ error }}</span>
-      </div>
-      {% endif %}
-
-      <!-- Seat map card -->
-      <div class="card shadow-sm">
-        <div class="card-body">
-          <h5 class="card-title text-center mb-3">Select Your Seats</h5>
-          <div class="screen">🎬 All eyes this way please!</div>
-
-          <!--
-            CONCURRENCY NOTE:
-            This form POSTs to reserve_seats, which runs inside
-            transaction.atomic() + select_for_update() to prevent double-booking.
-            Yellow seats are temporarily held by other users (2-min lock).
-            They cannot be selected and are released automatically by the
-            background scheduler when their timer expires.
-          -->
-          <form method="POST" action="{% url 'reserve_seats' theaters.id %}" id="seatForm">
-            {% csrf_token %}
-
-            <div class="d-flex justify-content-center flex-wrap mb-4" id="seatGrid">
-              {% for seat in seats %}
-                {% if seat.is_booked %}
-                  <div class="seat sold" title="Seat {{ seat.seat_number }} — permanently booked">
-                    {{ seat.seat_number }}
-                  </div>
-
-                {% elif seat.reserved_by_other %}
-                  <div class="seat reserved-other"
-                       title="Seat {{ seat.seat_number }} — temporarily held by another user">
-                    {{ seat.seat_number }}
-                  </div>
-
-                {% elif seat.reserved_by_me %}
-                  <div class="seat reserved-me"
-                       title="Seat {{ seat.seat_number }} — already in your reservation">
-                    <input type="checkbox" name="seats" value="{{ seat.id }}"
-                           class="d-none seat-checkbox"
-                           id="seat-{{ seat.id }}" checked>
-                    <label for="seat-{{ seat.id }}"
-                           class="w-100 h-100 d-flex align-items-center justify-content-center mb-0"
-                           style="cursor:pointer;">
-                      {{ seat.seat_number }}
-                    </label>
-                  </div>
-
-                {% else %}
-                  <div class="seat" title="Seat {{ seat.seat_number }} — available">
-                    <input type="checkbox" name="seats" value="{{ seat.id }}"
-                           class="d-none seat-checkbox"
-                           id="seat-{{ seat.id }}">
-                    <label for="seat-{{ seat.id }}"
-                           class="w-100 h-100 d-flex align-items-center justify-content-center mb-0"
-                           style="cursor:pointer;">
-                      {{ seat.seat_number }}
-                    </label>
-                  </div>
-                {% endif %}
-              {% endfor %}
-            </div>
-
-            <!-- Legend -->
-            <div class="d-flex justify-content-center flex-wrap gap-3 mb-4">
-              <div class="d-flex align-items-center gap-1">
-                <div class="seat mb-0" style="cursor:default;width:22px;height:22px;line-height:18px;"></div>
-                <small>Available</small>
-              </div>
-              <div class="d-flex align-items-center gap-1">
-                <div class="seat selected mb-0" style="cursor:default;width:22px;height:22px;line-height:18px;"></div>
-                <small>Selected</small>
-              </div>
-              <div class="d-flex align-items-center gap-1">
-                <div class="seat reserved-other mb-0" style="cursor:default;width:22px;height:22px;line-height:18px;"></div>
-                <small>Held (2 min)</small>
-              </div>
-              <div class="d-flex align-items-center gap-1">
-                <div class="seat sold mb-0" style="cursor:default;width:22px;height:22px;line-height:18px;"></div>
-                <small>Sold</small>
-              </div>
-            </div>
-
-            <!-- Selection summary -->
-            <p class="text-center text-muted mb-3" id="selectionSummary">No seats selected</p>
-
-            <div class="text-center">
-              <button type="submit" id="reserveBtn"
-                      class="btn btn-success btn-lg px-5" disabled>
-                <i class="fas fa-lock me-2"></i>Hold Seats for 2 Minutes
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      <p class="text-center text-muted mt-3" style="font-size:13px;">
-        <i class="fas fa-info-circle me-1"></i>
-        Selected seats are locked for <strong>2 minutes</strong> while you confirm.
-        Yellow seats are temporarily held by other users.
-      </p>
-
+  <!-- Info hero -->
+  <div class="info-card">
+    <div class="movie-title">
+      {{ theaters.movie.name }}
+      {% if theaters.language %}<span class="lang-badge">{{ theaters.language.name }}</span>{% endif %}
+    </div>
+    <div class="meta-row">
+      <span class="meta-item"><i class="fas fa-building"></i>{{ theaters.name }}</span>
+      <span class="meta-item"><i class="fas fa-clock"></i>{{ theaters.time|date:"D, d M Y · H:i" }}</span>
+      <span class="meta-item"><i class="fas fa-couch"></i>{{ seats|length }} seats</span>
     </div>
   </div>
+
+  {% if error %}
+  <div class="seat-error">
+    <i class="fas fa-exclamation-circle" style="margin-top:2px;flex-shrink:0;"></i>
+    <span>{{ error }}</span>
+  </div>
+  {% endif %}
+
+  <!-- Seat map card -->
+  <div style="background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,.08);padding:24px 16px 20px;">
+
+    <div class="screen-wrap">
+      <div class="screen-bar"></div>
+      <div class="screen-label">All eyes this way</div>
+    </div>
+
+    <div class="zone-legend">
+      <div class="zone-chip">
+        <div class="zone-dot" style="background:var(--premium-bg);border:1.5px solid var(--premium-bd);"></div>
+        Premium (A–C)
+      </div>
+      <div class="zone-chip">
+        <div class="zone-dot" style="background:var(--standard-bg);border:1.5px solid var(--standard-bd);"></div>
+        Standard (D–G)
+      </div>
+      <div class="zone-chip">
+        <div class="zone-dot" style="background:var(--economy-bg);border:1.5px solid var(--economy-bd);"></div>
+        Economy (H–J)
+      </div>
+    </div>
+
+    <form method="POST" action="{% url 'reserve_seats' theaters.id %}" id="seatForm">
+      {% csrf_token %}
+      <div class="seat-theater">
+        {% for row_letter, row_seats in seat_rows %}
+        <div class="seat-row">
+          <span class="row-label">{{ row_letter }}</span>
+          {% for seat in row_seats %}
+            {% if seat.is_booked %}
+              <div class="seat sold" title="{{ seat.seat_number }} — Sold">✕</div>
+            {% elif seat.reserved_by_other %}
+              <div class="seat reserved-other" title="{{ seat.seat_number }} — Held by someone else">
+                {{ seat.seat_number|slice:"1:" }}
+              </div>
+            {% elif seat.reserved_by_me %}
+              <div class="seat reserved-me {{ seat.zone }}" title="{{ seat.seat_number }} — In your basket">
+                <input type="checkbox" name="seats" value="{{ seat.id }}"
+                       class="d-none seat-checkbox" id="seat-{{ seat.id }}" checked>
+                <label for="seat-{{ seat.id }}">{{ seat.seat_number|slice:"1:" }}</label>
+              </div>
+            {% else %}
+              <div class="seat {{ seat.zone }}" title="{{ seat.seat_number }} — Available">
+                <input type="checkbox" name="seats" value="{{ seat.id }}"
+                       class="d-none seat-checkbox" id="seat-{{ seat.id }}">
+                <label for="seat-{{ seat.id }}">{{ seat.seat_number|slice:"1:" }}</label>
+              </div>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="seat-legend">
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:var(--s-avail-bg);border-color:var(--s-avail-bd);"></div> Available
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:var(--s-selected-bg);border-color:var(--s-selected-bg);"></div> Selected
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:var(--s-held-bg);border-color:var(--s-held-bd);"></div> Held (2 min)
+        </div>
+        <div class="legend-item">
+          <div class="legend-swatch" style="background:var(--s-sold-bg);border-color:var(--s-sold-bd);"></div> Sold
+        </div>
+      </div>
+
+      <button type="submit" id="realSubmit" class="d-none"></button>
+    </form>
+
+    <p style="text-align:center;font-size:.73rem;color:#bbb;margin-top:12px;">
+      <i class="fas fa-lock me-1"></i>Seats are held for <strong>2 minutes</strong> after you tap Hold.
+    </p>
+  </div>
+
+</div>
+
+<!-- Sticky bottom bar -->
+<div class="summary-bar">
+  <div class="summary-text">
+    <div id="summaryCount">No seats selected</div>
+    <div class="summary-sub" id="summarySeats"></div>
+  </div>
+  <button class="btn-hold" id="holdBtn" disabled
+          onclick="document.getElementById('realSubmit').click();">
+    <i class="fas fa-lock me-1"></i>Hold Seats
+  </button>
 </div>
 
 <script>
+(function () {
   const checkboxes = document.querySelectorAll('.seat-checkbox');
-  const reserveBtn = document.getElementById('reserveBtn');
-  const summary    = document.getElementById('selectionSummary');
+  const holdBtn    = document.getElementById('holdBtn');
+  const countEl   = document.getElementById('summaryCount');
+  const seatsEl   = document.getElementById('summarySeats');
+
+  function seatNumber(cb) {
+    return cb.closest('.seat').getAttribute('title').split(' ')[0];
+  }
 
   function updateUI() {
-    const selected = [...checkboxes].filter(c => c.checked);
-    const count = selected.length;
-
-    // Sync the visual selected class
+    const checked = [...checkboxes].filter(c => c.checked);
+    const n = checked.length;
     checkboxes.forEach(cb => {
-      const seatDiv = cb.closest('.seat');
-      if (seatDiv) seatDiv.classList.toggle('selected', cb.checked);
+      const div = cb.closest('.seat');
+      if (div) div.classList.toggle('selected', cb.checked);
     });
-
-    if (count === 0) {
-      summary.textContent = 'No seats selected';
-      reserveBtn.disabled = true;
+    if (n === 0) {
+      countEl.textContent = 'No seats selected';
+      seatsEl.textContent = '';
+      holdBtn.disabled = true;
     } else {
-      const nums = selected.map(cb =>
-        cb.closest('.seat').querySelector('label').textContent.trim()
-      );
-      summary.textContent = `${count} seat${count > 1 ? 's' : ''} selected: ${nums.join(', ')}`;
-      reserveBtn.disabled = false;
+      countEl.textContent = `${n} seat${n > 1 ? 's' : ''} selected`;
+      seatsEl.textContent = checked.map(seatNumber).join(', ');
+      holdBtn.disabled = false;
     }
   }
 
-  checkboxes.forEach(cb => cb.addEventListener('change', updateUI));
-  updateUI(); // initialise for pre-checked (reserved-by-me) seats
-</script>
+  // Clicking the .seat div toggles the checkbox (better mobile hit target)
+  document.querySelectorAll('.seat:not(.sold):not(.reserved-other)').forEach(div => {
+    div.addEventListener('click', function (e) {
+      if (e.target.tagName === 'LABEL' || e.target.tagName === 'INPUT') return;
+      const cb = div.querySelector('.seat-checkbox');
+      if (cb) { cb.checked = !cb.checked; updateUI(); }
+    });
+  });
 
+  checkboxes.forEach(cb => cb.addEventListener('change', updateUI));
+  updateUI();
+})();
+</script>
 {% endblock %}
