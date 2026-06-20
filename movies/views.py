@@ -100,14 +100,37 @@ def _annotate_seats(seats, theater, user):
     return seats
 
 
+def _get_seat_zone(seat_number):
+    row = seat_number[0].upper()
+    if row in ('A', 'B', 'C'):
+        return 'premium'
+    elif row in ('D', 'E', 'F', 'G'):
+        return 'standard'
+    return 'economy'
+
+
 def _seat_map_response(request, theater, error=None):
     """Single render path for the seat map — always fully annotated."""
     seats = _annotate_seats(
-        list(Seat.objects.filter(theater=theater)),
+        list(Seat.objects.filter(theater=theater).order_by('seat_number')),
         theater, request.user,
     )
+
+    # Attach zone class and group by row letter for the template
+    # Template expects: seat_rows = [('A', [seat, seat, ...]), ('B', [...]), ...]
+    from collections import defaultdict
+    rows = defaultdict(list)
+    for seat in seats:
+        seat.zone = _get_seat_zone(seat.seat_number)
+        rows[seat.seat_number[0].upper()].append(seat)
+
+    seat_rows = sorted(rows.items())  # [('A', [...]), ('B', [...]), ...]
+
     return render(request, 'movies/seat_selection.html', {
-        'theaters': theater, 'seats': seats, 'error': error,
+        'theaters':  theater,
+        'seats':     seats,      # kept for {{ seats|length }} in template
+        'seat_rows': seat_rows,  # used by {% for row_letter, row_seats in seat_rows %}
+        'error':     error,
     })
 
 
